@@ -199,6 +199,43 @@ CREATE TABLE peeringdb_organization (
   notes    text         NOT NULL
 );`
 
+func idExistsInTable(db *sql.DB, table string, id int) bool {
+	// Look for the given ID in the given table
+	result, err := db.Query(fmt.Sprintf("SELECT id FROM %s WHERE id = %d",
+		table, id))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer result.Close()
+
+	// Return true if ID was found
+	return result.Next()
+}
+
+func getInsertOrUpdateStatement(db *sql.DB, table string, id int, columns []string) string {
+	var statement string
+
+	if idExistsInTable(db, table, id) {
+		statement = fmt.Sprintf("UPDATE %s SET ", table)
+		for index, column := range columns {
+			if index < (len(columns) - 1) {
+				statement += fmt.Sprintf("%s = ?, ", column)
+			} else {
+				statement += fmt.Sprintf("%s = ?", column)
+			}
+		}
+		statement += fmt.Sprintf(" WHERE id = %d", id)
+	} else {
+		statement = fmt.Sprintf("INSERT INTO %s VALUES (%d", table, id)
+		for i := 0; i < len(columns); i++ {
+			statement += ", ?"
+		}
+		statement += ")"
+	}
+
+	return statement
+}
+
 func synchronizeOrganizations(api *peeringdb.API, since int64, db *sql.DB) {
 	search := make(map[string]interface{})
 	search["since"] = since
@@ -220,22 +257,25 @@ func synchronizeOrganizations(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "address1",
+		"address2", "city", "state", "zipcode", "country", "name", "website",
+		"notes"}
 
 	progressbar := pb.StartNew(len(*organizations))
 	for _, organization := range *organizations {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_organization VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_organization", organization.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(organization.ID, organization.Status,
-			organization.Created, organization.Updated, 0,
-			organization.Address1, organization.Address2, organization.City,
-			organization.State, organization.Zipcode, organization.Country,
-			organization.Name, organization.Website, organization.Notes)
+		_, err = statement.Exec(organization.Status, organization.Created,
+			organization.Updated, 0, organization.Address1,
+			organization.Address2, organization.City, organization.State,
+			organization.Zipcode, organization.Country, organization.Name,
+			organization.Website, organization.Notes)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -269,25 +309,26 @@ func synchronizeFacilities(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "address1",
+		"address2", "city", "state", "zipcode", "country", "name", "website",
+		"clli", "rencode", "npanxx", "notes", "org_id"}
 
 	progressbar := pb.StartNew(len(*facilities))
 	for _, facility := range *facilities {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_facility VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_facility", facility.ID, columns))
 		if err != nil {
-			fmt.Println("========================")
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(facility.ID, facility.Status, facility.Created,
+		_, err = statement.Exec(facility.Status, facility.Created,
 			facility.Updated, 0, facility.Address1, facility.Address2,
 			facility.City, facility.State, facility.Zipcode, facility.Country,
 			facility.Name, facility.Website, facility.CLLI, facility.Rencode,
 			facility.Npanxx, facility.Notes, facility.OrganizationID)
 		if err != nil {
-			fmt.Println("---------------------------")
 			log.Fatal(err)
 		}
 
@@ -320,18 +361,25 @@ func synchronizeNetworks(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "asn",
+		"name", "aka", "irr_as_set", "website", "looking_glass",
+		"route_server", "notes", "notes_private", "info_traffic", "info_ratio",
+		"info_scope", "info_type", "info_prefixes4", "info_prefixes6",
+		"info_unicast", "info_multicast", "info_ipv6", "policy_url",
+		"policy_general", "policy_locations", "policy_ratio",
+		"policy_contracts", "org_id"}
 
 	progressbar := pb.StartNew(len(*networks))
 	for _, network := range *networks {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_network VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_network", network.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(network.ID, network.Status, network.Created,
+		_, err = statement.Exec(network.Status, network.Created,
 			network.Updated, 0, network.ASN, network.Name, network.AKA,
 			network.IRRASSet, network.Website, network.LookingGlass,
 			network.RouteServer, network.Notes, "", network.InfoTraffic,
@@ -374,21 +422,27 @@ func synchronizeInternetExchanges(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "name",
+		"name_long", "city", "country", "notes", "region_continent", "media",
+		"proto_unicast", "proto_multicast", "proto_ipv6", "website",
+		"url_stats", "info_type", "info_prefixes4", "info_prefixes6",
+		"info_unicast", "tech_email", "tech_phone", "policy_email",
+		"policy_phone", "org_id"}
 
 	progressbar := pb.StartNew(len(*ixs))
 	for _, ix := range *ixs {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_ix VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_ix", ix.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(ix.ID, ix.Status, ix.Created, ix.Updated, 0,
-			ix.Name, ix.NameLong, ix.City, ix.Country, ix.Notes,
-			ix.RegionContinent, ix.Media, ix.ProtoUnicast, ix.ProtoMulticast,
-			ix.ProtoIPv6, ix.Website, ix.URLStats, ix.TechEmail, ix.TechPhone,
+		_, err = statement.Exec(ix.Status, ix.Created, ix.Updated, 0, ix.Name,
+			ix.NameLong, ix.City, ix.Country, ix.Notes, ix.RegionContinent,
+			ix.Media, ix.ProtoUnicast, ix.ProtoMulticast, ix.ProtoIPv6,
+			ix.Website, ix.URLStats, ix.TechEmail, ix.TechPhone,
 			ix.PolicyEmail, ix.PolicyPhone, ix.OrganizationID)
 		if err != nil {
 			log.Fatal(err)
@@ -423,20 +477,22 @@ func synchronizeInternetExchangeFacilities(api *peeringdb.API, since int64, db *
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "ix_id",
+		"fac_id"}
 
 	progressbar := pb.StartNew(len(*ixfacilities))
 	for _, ixfacility := range *ixfacilities {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_ix_facility VALUES (?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_ix_facility", ixfacility.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(ixfacility.ID, ixfacility.Status,
-			ixfacility.Created, ixfacility.Updated, 0,
-			ixfacility.InternetExchangeID, ixfacility.FacilityID)
+		_, err = statement.Exec(ixfacility.Status, ixfacility.Created,
+			ixfacility.Updated, 0, ixfacility.InternetExchangeID,
+			ixfacility.FacilityID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -470,21 +526,23 @@ func synchronizeInternetLANs(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "name",
+		"descr", "mtu", "vlan", "dot1q_support", "rs_asn", "arp_sponge",
+		"ix_id"}
 
 	progressbar := pb.StartNew(len(*ixlans))
 	for _, ixlan := range *ixlans {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_ixlan VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_ixlan", ixlan.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(ixlan.ID, ixlan.Status, ixlan.Created,
-			ixlan.Updated, 0, ixlan.Name, ixlan.Description, ixlan.MTU, 0,
-			ixlan.Dot1QSupport, ixlan.RouteServerASN, ixlan.ARPSponge,
-			ixlan.InternetExchangeID)
+		_, err = statement.Exec(ixlan.Status, ixlan.Created, ixlan.Updated, 0,
+			ixlan.Name, ixlan.Description, ixlan.MTU, 0, ixlan.Dot1QSupport,
+			ixlan.RouteServerASN, ixlan.ARPSponge, ixlan.InternetExchangeID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -518,20 +576,21 @@ func synchronizeInternetPrefixes(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "notes",
+		"protocol", "prefix", "ixlan_id"}
 
 	progressbar := pb.StartNew(len(*ixpfxs))
 	for _, ixpfx := range *ixpfxs {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_ixlan_prefix VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_ixlan_prefix", ixpfx.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(ixpfx.ID, ixpfx.Status, ixpfx.Created,
-			ixpfx.Updated, 0, "", ixpfx.Protocol, ixpfx.Prefix,
-			ixpfx.InternetExchangeLANID)
+		_, err = statement.Exec(ixpfx.Status, ixpfx.Created, ixpfx.Updated, 0,
+			"", ixpfx.Protocol, ixpfx.Prefix, ixpfx.InternetExchangeLANID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -565,21 +624,23 @@ func synchronizeNetworkContacts(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "role",
+		"visible", "name", "phone", "email", "url", "net_id"}
 
 	progressbar := pb.StartNew(len(*netcontacts))
 	for _, netcontact := range *netcontacts {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_network_contact VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_network_contact", netcontact.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(netcontact.ID, netcontact.Status,
-			netcontact.Created, netcontact.Updated, 0, netcontact.Role,
-			netcontact.Visible, netcontact.Name, netcontact.Phone,
-			netcontact.Email, netcontact.URL, netcontact.NetworkID)
+		_, err = statement.Exec(netcontact.Status, netcontact.Created,
+			netcontact.Updated, 0, netcontact.Role, netcontact.Visible,
+			netcontact.Name, netcontact.Phone, netcontact.Email,
+			netcontact.URL, netcontact.NetworkID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -613,20 +674,22 @@ func synchronizeNetworkFacilities(api *peeringdb.API, since int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "local_asn",
+		"avail_sonet", "avail_ethernet", "avail_atm", "net_id", "fac_id"}
 
 	progressbar := pb.StartNew(len(*netfacilities))
 	for _, netfacility := range *netfacilities {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_network_facility VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_network_facility", netfacility.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(netfacility.ID, netfacility.Status,
-			netfacility.Created, netfacility.Updated, 0, netfacility.LocalASN,
-			0, 0, 0, netfacility.NetworkID, netfacility.FacilityID)
+		_, err = statement.Exec(netfacility.Status, netfacility.Created,
+			netfacility.Updated, 0, netfacility.LocalASN, 0, 0, 0,
+			netfacility.NetworkID, netfacility.FacilityID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -661,18 +724,21 @@ func synchronizeNetworkInternetExchangeLANs(api *peeringdb.API, since int64, db 
 	if err != nil {
 		log.Fatal(err)
 	}
+	columns := []string{"status", "created", "updated", "version", "asn",
+		"ipaddr4", "ipaddr6", "is_rs_peer", "notes", "speed", "net_id",
+		"ixlan_id"}
 
 	progressbar := pb.StartNew(len(*netixlans))
 	for _, netixlan := range *netixlans {
 		// Prepare the database insertion
-		statement, err := insert.Prepare("INSERT INTO peeringdb_network_ixlan VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		statement, err := insert.Prepare(getInsertOrUpdateStatement(db, "peeringdb_network_ixlan", netixlan.ID, columns))
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer statement.Close()
 
 		// Insert the values
-		_, err = statement.Exec(netixlan.ID, netixlan.Status, netixlan.Created,
+		_, err = statement.Exec(netixlan.Status, netixlan.Created,
 			netixlan.Updated, 0, netixlan.ASN, netixlan.IPAddr4,
 			netixlan.IPAddr6, netixlan.IsRSPeer, netixlan.Notes,
 			netixlan.Speed, netixlan.NetworkID, netixlan.InternetExchangeLANID)
