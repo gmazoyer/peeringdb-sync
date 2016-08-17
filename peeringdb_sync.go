@@ -318,7 +318,7 @@ func synchronizeOrganizations(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
+
 	}
 
 	tx.Commit()
@@ -364,7 +364,6 @@ func synchronizeFacilities(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -419,7 +418,6 @@ func synchronizeNetworks(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -468,7 +466,6 @@ func synchronizeInternetExchanges(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -513,7 +510,6 @@ func synchronizeInternetExchangeFacilities(api *peeringdb.API, since int64, db *
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -558,7 +554,6 @@ func synchronizeInternetLANs(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -602,7 +597,6 @@ func synchronizeInternetPrefixes(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -648,7 +642,6 @@ func synchronizeNetworkContacts(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -693,7 +686,6 @@ func synchronizeNetworkFacilities(api *peeringdb.API, since int64, db *sql.DB) {
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
@@ -741,7 +733,6 @@ func synchronizeNetworkInternetExchangeLANs(api *peeringdb.API, since int64, db 
 		}
 
 		progressbar.Increment()
-		time.Sleep(time.Millisecond)
 	}
 
 	tx.Commit()
