@@ -801,10 +801,8 @@ func main() {
 		initialSynchronization = false
 	}
 
-	fmt.Println("Starting PeeringDB synchronization...")
-
 	// Open the SQLite database, will create it if needed
-	db, err := sql.Open("sqlite3", "./peeringdb.db")
+	db, err := sql.Open("sqlite3", databaseFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -822,6 +820,8 @@ func main() {
 			return
 		}
 	}
+
+	fmt.Println("Starting PeeringDB synchronization...")
 
 	// Prepare to query the API
 	api := peeringdb.NewAPI()
