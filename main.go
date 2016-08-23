@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -214,10 +215,22 @@ CREATE INDEX peeringdb_network_ixlan_net_id    ON peeringdb_network_ixlan    (ne
 func main() {
 	databaseFile := "./peeringdb.db"
 	initialSynchronization := true
+	fullRequested := flag.Bool("full", false,
+		"Request a full synchronization (needed to remove old entries)")
+	flag.Parse()
 
 	// The database already exists, assume it is not the first synchronization
 	if _, err := os.Stat(databaseFile); err == nil {
-		initialSynchronization = false
+		if *fullRequested {
+			err = os.Remove(databaseFile)
+			if err != nil {
+				log.Fatal(err)
+			} else {
+				fmt.Println("Full synchronization requested, the local database has removed.")
+			}
+		} else {
+			initialSynchronization = false
+		}
 	}
 
 	// Open the SQLite database, will create it if needed
