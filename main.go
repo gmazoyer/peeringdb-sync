@@ -226,7 +226,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			} else {
-				fmt.Println("Full synchronization requested, the local database has removed.")
+				fmt.Println("Full synchronization requested, the local database has been removed.")
 			}
 		} else {
 			initialSynchronization = false
