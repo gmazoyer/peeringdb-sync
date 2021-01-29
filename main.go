@@ -6,19 +6,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/respawner/peeringdb"
 )
 
 const dbSchema = `
-CREATE TABLE last_sync (
-  id      integer  NOT NULL PRIMARY KEY AUTOINCREMENT,
-  updated datetime NOT NULL
-);
-INSERT INTO last_sync VALUES (0, 0);
-
 CREATE TABLE peeringdb_facility (
   id       integer      NOT NULL PRIMARY KEY AUTOINCREMENT,
   status   varchar(255) NOT NULL,
@@ -243,11 +236,7 @@ func main() {
 	// Prepare to query the API and the synchronization
 	sync := synchronization{peeringdb.NewAPI(), db}
 
-	var lastSync int64
-	if !initialSynchronization {
-		// Found the last database sync
-		lastSync = sync.getLastSyncDate()
-	} else {
+	if initialSynchronization {
 		// First time, create the database schema
 		_, err = db.Exec(dbSchema)
 		if err != nil {
@@ -259,19 +248,16 @@ func main() {
 	fmt.Println("Starting PeeringDB synchronization...")
 
 	// Synchronize all objects
-	sync.synchronizeOrganizations(lastSync)
-	sync.synchronizeFacilities(lastSync)
-	sync.synchronizeNetworks(lastSync)
-	sync.synchronizeInternetExchanges(lastSync)
-	sync.synchronizeInternetExchangeFacilities(lastSync)
-	sync.synchronizeInternetLANs(lastSync)
-	sync.synchronizeInternetPrefixes(lastSync)
-	sync.synchronizeNetworkContacts(lastSync)
-	sync.synchronizeNetworkFacilities(lastSync)
-	sync.synchronizeNetworkInternetExchangeLANs(lastSync)
-
-	// Set the last sync date
-	sync.setLastSyncDate(time.Now().Unix())
+	sync.synchronizeOrganizations()
+	sync.synchronizeFacilities()
+	sync.synchronizeNetworks()
+	sync.synchronizeInternetExchanges()
+	sync.synchronizeInternetExchangeFacilities()
+	sync.synchronizeInternetLANs()
+	sync.synchronizeInternetPrefixes()
+	sync.synchronizeNetworkContacts()
+	sync.synchronizeNetworkFacilities()
+	sync.synchronizeNetworkInternetExchangeLANs()
 
 	fmt.Println("PeeringDB fully synchronized.")
 }
