@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/respawner/peeringdb"
@@ -62,13 +63,29 @@ func (s *synchronization) insertOrUpdateStatement(forceInsert bool, table string
 	return statement
 }
 
+func (s *synchronization) removeDeleted(tx *sql.Tx, table string) error {
+	// Prepare the statement.
+	result, err := tx.Query(fmt.Sprintf("DELETE FROM %s WHERE status == 'deleted'", table))
+	if err != nil {
+		return err
+	}
+	return result.Close()
+}
+
 // getLastSyncDate retrieves the timestamp at which the last synchronization
 // has occured. The returned value is an int64.
-func (s *synchronization) getLastSyncDate() int64 {
-	var updated time.Time
+func (s *synchronization) getLastSyncDate(table string) int64 {
+	switch {
+	case table == "":
+		log.Fatal("table not supplied")
+	case strings.Contains(table, " "):
+		log.Fatal("table malformed")
+	}
+
+	updated := time.Unix(0, 0)
 
 	// Query for last sync date
-	result, err := s.db.Query("SELECT updated FROM last_sync WHERE id = 0")
+	result, err := s.db.Query(fmt.Sprintf("SELECT updated FROM %s ORDER BY updated DESC LIMIT 1", table))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,31 +121,8 @@ func (s *synchronization) executeInsertOrUpdate(tx *sql.Tx, forceInsert bool, ta
 	return nil
 }
 
-// setLastSyncDate sets the timestamp at which the last synchronization has
-// been done.
-func (s *synchronization) setLastSyncDate(updated int64) {
-	update, err := s.db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Prepare the database updated
-	statement, err := update.Prepare("UPDATE last_sync SET updated = ? WHERE id = 0")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer statement.Close()
-
-	// Set the values
-	_, err = statement.Exec(updated)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	update.Commit()
-}
-
-func (s *synchronization) synchronizeOrganizations(since int64) {
+func (s *synchronization) synchronizeOrganizations() {
+	since := s.getLastSyncDate("peeringdb_organization")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -169,11 +163,15 @@ func (s *synchronization) synchronizeOrganizations(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_organization")
+
 	tx.Commit()
 	progressbar.FinishPrint("Organizations sync done.")
 }
 
-func (s *synchronization) synchronizeFacilities(since int64) {
+func (s *synchronization) synchronizeFacilities() {
+	since := s.getLastSyncDate("peeringdb_facility")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -214,11 +212,15 @@ func (s *synchronization) synchronizeFacilities(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_facility")
+
 	tx.Commit()
 	progressbar.FinishPrint("Facilities sync done.")
 }
 
-func (s *synchronization) synchronizeNetworks(since int64) {
+func (s *synchronization) synchronizeNetworks() {
+	since := s.getLastSyncDate("peeringdb_network")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -268,11 +270,15 @@ func (s *synchronization) synchronizeNetworks(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_network")
+
 	tx.Commit()
 	progressbar.FinishPrint("Networks sync done.")
 }
 
-func (s *synchronization) synchronizeInternetExchanges(since int64) {
+func (s *synchronization) synchronizeInternetExchanges() {
+	since := s.getLastSyncDate("peeringdb_ix")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -316,11 +322,15 @@ func (s *synchronization) synchronizeInternetExchanges(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_ix")
+
 	tx.Commit()
 	progressbar.FinishPrint("Internet exchanges sync done.")
 }
 
-func (s *synchronization) synchronizeInternetExchangeFacilities(since int64) {
+func (s *synchronization) synchronizeInternetExchangeFacilities() {
+	since := s.getLastSyncDate("peeringdb_ix_facility")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -360,11 +370,15 @@ func (s *synchronization) synchronizeInternetExchangeFacilities(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_ix_facility")
+
 	tx.Commit()
 	progressbar.FinishPrint("Internet exchange facilities sync done.")
 }
 
-func (s *synchronization) synchronizeInternetLANs(since int64) {
+func (s *synchronization) synchronizeInternetLANs() {
+	since := s.getLastSyncDate("peeringdb_ixlan")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -404,11 +418,15 @@ func (s *synchronization) synchronizeInternetLANs(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_ixlan")
+
 	tx.Commit()
 	progressbar.FinishPrint("Internet exchange LANs sync done.")
 }
 
-func (s *synchronization) synchronizeInternetPrefixes(since int64) {
+func (s *synchronization) synchronizeInternetPrefixes() {
+	since := s.getLastSyncDate("peeringdb_ixlan_prefix")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -447,11 +465,15 @@ func (s *synchronization) synchronizeInternetPrefixes(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_ixlan_prefix")
+
 	tx.Commit()
 	progressbar.FinishPrint("Internet exchange prefixes sync done.")
 }
 
-func (s *synchronization) synchronizeNetworkContacts(since int64) {
+func (s *synchronization) synchronizeNetworkContacts() {
+	since := s.getLastSyncDate("peeringdb_network_contact")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -492,11 +514,15 @@ func (s *synchronization) synchronizeNetworkContacts(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_network_contact")
+
 	tx.Commit()
 	progressbar.FinishPrint("Network contacts sync done.")
 }
 
-func (s *synchronization) synchronizeNetworkFacilities(since int64) {
+func (s *synchronization) synchronizeNetworkFacilities() {
+	since := s.getLastSyncDate("peeringdb_network_facility")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -536,11 +562,15 @@ func (s *synchronization) synchronizeNetworkFacilities(since int64) {
 		progressbar.Increment()
 	}
 
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_network_facility")
+
 	tx.Commit()
 	progressbar.FinishPrint("Network facilities sync done.")
 }
 
-func (s *synchronization) synchronizeNetworkInternetExchangeLANs(since int64) {
+func (s *synchronization) synchronizeNetworkInternetExchangeLANs() {
+	since := s.getLastSyncDate("peeringdb_network_ixlan")
 	search := make(map[string]interface{})
 	search["since"] = since
 
@@ -582,6 +612,9 @@ func (s *synchronization) synchronizeNetworkInternetExchangeLANs(since int64) {
 
 		progressbar.Increment()
 	}
+
+	// Remove the entries marked as deleted.
+	s.removeDeleted(tx, "peeringdb_network_ixlan")
 
 	tx.Commit()
 	progressbar.FinishPrint("Network internet exchange LANs sync done.")
