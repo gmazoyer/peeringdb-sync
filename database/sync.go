@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gmazoyer/peeringdb"
-	"github.com/schollz/progressbar/v3"
+	"github.com/vbauerster/mpb/v8"
 )
 
 // Synchronization is a structure holding pointers to the PeeringDB API and
@@ -121,7 +121,7 @@ func (s *Synchronization) executeInsertOrUpdate(tx *sql.Tx, forceInsert bool, ta
 	return nil
 }
 
-func (s *Synchronization) SynchronizeOrganizations() {
+func (s *Synchronization) SynchronizeOrganizations(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_organization"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -146,7 +146,7 @@ func (s *Synchronization) SynchronizeOrganizations() {
 	}
 
 	// Put values in the database
-	bar := progressbar.Default(int64(len(*organizations)), "Organizations")
+	bar.SetTotal(int64(len(*organizations)), false)
 	for _, organization := range *organizations {
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, organization.ID, table.GetColumnsNames(), organization.Created,
@@ -159,17 +159,17 @@ func (s *Synchronization) SynchronizeOrganizations() {
 			panic(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeCampuses() {
+func (s *Synchronization) SynchronizeCampuses(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_campus"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -194,7 +194,7 @@ func (s *Synchronization) SynchronizeCampuses() {
 	}
 
 	// Put values in the database
-	bar := progressbar.Default(int64(len(*campuses)), "Campuses")
+	bar.SetTotal(int64(len(*campuses)), false)
 	for _, campus := range *campuses {
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, campus.ID, table.GetColumnsNames(), campus.Created, campus.Updated,
@@ -205,17 +205,17 @@ func (s *Synchronization) SynchronizeCampuses() {
 			panic(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeFacilities() {
+func (s *Synchronization) SynchronizeFacilities(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_facility"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -239,7 +239,7 @@ func (s *Synchronization) SynchronizeFacilities() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*facilities)), "Facilities")
+	bar.SetTotal(int64(len(*facilities)), false)
 	for _, facility := range *facilities {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -256,17 +256,17 @@ func (s *Synchronization) SynchronizeFacilities() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeCarriers() {
+func (s *Synchronization) SynchronizeCarriers(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_carrier"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -290,7 +290,7 @@ func (s *Synchronization) SynchronizeCarriers() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*carriers)), "Carriers")
+	bar.SetTotal(int64(len(*carriers)), false)
 	for _, carrier := range *carriers {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -302,16 +302,16 @@ func (s *Synchronization) SynchronizeCarriers() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
-func (s *Synchronization) SynchronizeNetworks() {
+func (s *Synchronization) SynchronizeNetworks(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_network"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -335,7 +335,7 @@ func (s *Synchronization) SynchronizeNetworks() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*networks)), "Networks")
+	bar.SetTotal(int64(len(*networks)), false)
 	for _, network := range *networks {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -352,17 +352,17 @@ func (s *Synchronization) SynchronizeNetworks() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, "peeringdb_network")
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeInternetExchanges() {
+func (s *Synchronization) SynchronizeInternetExchanges(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_ix"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -387,7 +387,7 @@ func (s *Synchronization) SynchronizeInternetExchanges() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*ixs)), "Internet Exchanges")
+	bar.SetTotal(int64(len(*ixs)), false)
 	for _, ix := range *ixs {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -402,17 +402,17 @@ func (s *Synchronization) SynchronizeInternetExchanges() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeInternetExchangeFacilities() {
+func (s *Synchronization) SynchronizeInternetExchangeFacilities(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_ix_facility"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -438,7 +438,7 @@ func (s *Synchronization) SynchronizeInternetExchangeFacilities() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*ixfacilities)), "IX Facilities")
+	bar.SetTotal(int64(len(*ixfacilities)), false)
 	for _, ixfacility := range *ixfacilities {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -450,17 +450,17 @@ func (s *Synchronization) SynchronizeInternetExchangeFacilities() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeInternetExchangeLANs() {
+func (s *Synchronization) SynchronizeInternetExchangeLANs(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_ixlan"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -485,7 +485,7 @@ func (s *Synchronization) SynchronizeInternetExchangeLANs() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*ixlans)), "IX LANs")
+	bar.SetTotal(int64(len(*ixlans)), false)
 	for _, ixlan := range *ixlans {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -498,17 +498,17 @@ func (s *Synchronization) SynchronizeInternetExchangeLANs() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeInternetExchangePrefixes() {
+func (s *Synchronization) SynchronizeInternetExchangePrefixes(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_ix_prefix"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -533,7 +533,7 @@ func (s *Synchronization) SynchronizeInternetExchangePrefixes() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*ixpfxs)), "IX Prefixes")
+	bar.SetTotal(int64(len(*ixpfxs)), false)
 	for _, ixpfx := range *ixpfxs {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -544,17 +544,17 @@ func (s *Synchronization) SynchronizeInternetExchangePrefixes() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeNetworkContacts() {
+func (s *Synchronization) SynchronizeNetworkContacts(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_network_contact"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -578,7 +578,7 @@ func (s *Synchronization) SynchronizeNetworkContacts() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*contacts)), "Contacts")
+	bar.SetTotal(int64(len(*contacts)), false)
 	for _, netcontact := range *contacts {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -590,17 +590,17 @@ func (s *Synchronization) SynchronizeNetworkContacts() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeNetworkFacilities() {
+func (s *Synchronization) SynchronizeNetworkFacilities(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_network_facility"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -625,7 +625,7 @@ func (s *Synchronization) SynchronizeNetworkFacilities() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*netfacilities)), "Network Facilities")
+	bar.SetTotal(int64(len(*netfacilities)), false)
 	for _, netfacility := range *netfacilities {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -637,17 +637,17 @@ func (s *Synchronization) SynchronizeNetworkFacilities() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
 
-func (s *Synchronization) SynchronizeNetworkInternetExchangeLANs() {
+func (s *Synchronization) SynchronizeNetworkInternetExchangeLANs(bar *mpb.Bar) {
 	table := GetSchema().Tables["peeringdb_network_ixlan"]
 	since := s.getLastSyncDate(table.Name)
 	search := make(map[string]interface{})
@@ -673,7 +673,7 @@ func (s *Synchronization) SynchronizeNetworkInternetExchangeLANs() {
 		log.Fatal(err)
 	}
 
-	bar := progressbar.Default(int64(len(*netixlans)), "Network IX LANs")
+	bar.SetTotal(int64(len(*netixlans)), false)
 	for _, netixlan := range *netixlans {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
@@ -687,12 +687,12 @@ func (s *Synchronization) SynchronizeNetworkInternetExchangeLANs() {
 			log.Fatal(err)
 		}
 
-		bar.Add(1)
+		bar.Increment()
 	}
 
 	// Remove the entries marked as deleted.
 	s.removeDeleted(tx, table.Name)
 
 	tx.Commit()
-	bar.Finish()
+	bar.SetTotal(-1, true)
 }
