@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -10,6 +11,14 @@ import (
 	"github.com/gmazoyer/peeringdb"
 	"github.com/vbauerster/mpb/v8"
 )
+
+func marshalJSON(v interface{}) string {
+	m, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(m)
+}
 
 // Synchronization is a structure holding pointers to the PeeringDB API and
 // database being used.
@@ -151,7 +160,7 @@ func (s *Synchronization) SynchronizeOrganizations(bar *mpb.Bar) {
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, organization.ID, table.GetColumnsNames(), organization.Created,
 			organization.Updated, organization.Status, organization.Name, organization.NameLong, organization.AKA,
-			organization.Website, "organization.SocialMedia", organization.Notes, organization.Address1,
+			organization.Website, marshalJSON(organization.SocialMedia), organization.Notes, organization.Address1,
 			organization.Address2, organization.Country, organization.City, organization.State, organization.Zipcode,
 			organization.Suite, organization.Floor, organization.Latitude, organization.Longitude,
 		)
@@ -198,7 +207,7 @@ func (s *Synchronization) SynchronizeCampuses(bar *mpb.Bar) {
 	for _, campus := range *campuses {
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, campus.ID, table.GetColumnsNames(), campus.Created, campus.Updated,
-			campus.Status, campus.Name, campus.NameLong, campus.AKA, campus.Website, "campus.SocialMedia",
+			campus.Status, campus.Name, campus.NameLong, campus.AKA, campus.Website, marshalJSON(campus.SocialMedia),
 			campus.Notes, campus.Country, campus.City, campus.State, campus.Zipcode, campus.OrganizationID,
 		)
 		if err != nil {
@@ -244,13 +253,13 @@ func (s *Synchronization) SynchronizeFacilities(bar *mpb.Bar) {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, facility.ID, table.GetColumnsNames(), facility.Created, facility.Updated,
-			facility.Status, facility.Name, facility.AKA, facility.NameLong, facility.Website, "facility.SocialMedia",
-			facility.CLLI, facility.Rencode, facility.Npanxx, facility.Notes, facility.SalesEmail,
-			facility.SalesPhone, facility.TechEmail, facility.TechPhone, "facility.AvailableVoltageServices",
-			facility.DiverseServingSubstations, facility.Property, facility.RegionContinent, facility.StatusDashboard,
-			facility.Address1, facility.Address2, facility.City, facility.Country, facility.State, facility.Zipcode,
-			facility.Floor, facility.Suite, facility.Latitude, facility.Longitude, facility.OrganizationID,
-			facility.CampusID,
+			facility.Status, facility.Name, facility.AKA, facility.NameLong, facility.Website,
+			marshalJSON(facility.SocialMedia), facility.CLLI, facility.Rencode, facility.Npanxx, facility.Notes,
+			facility.SalesEmail, facility.SalesPhone, facility.TechEmail, facility.TechPhone,
+			marshalJSON(facility.AvailableVoltageServices), facility.DiverseServingSubstations, facility.Property,
+			facility.RegionContinent, facility.StatusDashboard, facility.Address1, facility.Address2, facility.City,
+			facility.Country, facility.State, facility.Zipcode, facility.Floor, facility.Suite, facility.Latitude,
+			facility.Longitude, facility.OrganizationID, facility.CampusID,
 		)
 		if err != nil {
 			log.Fatal(err)
@@ -295,8 +304,8 @@ func (s *Synchronization) SynchronizeCarriers(bar *mpb.Bar) {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, carrier.ID, table.GetColumnsNames(), carrier.Created, carrier.Updated,
-			carrier.Status, carrier.Name, carrier.AKA, carrier.NameLong, carrier.Website, "carrier.SocialMedia",
-			carrier.Notes, carrier.OrganizationID,
+			carrier.Status, carrier.Name, carrier.AKA, carrier.NameLong, carrier.Website,
+			marshalJSON(carrier.SocialMedia), carrier.Notes, carrier.OrganizationID,
 		)
 		if err != nil {
 			log.Fatal(err)
@@ -340,13 +349,14 @@ func (s *Synchronization) SynchronizeNetworks(bar *mpb.Bar) {
 		// Put values in the database
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, network.ID, table.GetColumnsNames(), network.Created, network.Updated,
-			network.Status, network.Name, network.AKA, network.NameLong, network.Website, "network.SocialMedia",
-			network.ASN, network.LookingGlass, network.RouteServer, network.IRRASSet, network.InfoType,
-			"network.InfoTypes", network.InfoPrefixes4, network.InfoPrefixes6, network.InfoTraffic, network.InfoRatio,
-			network.InfoScope, network.InfoUnicast, network.InfoMulticast, network.InfoIPv6,
-			network.InfoNeverViaRouteServers, network.Notes, network.PolicyURL, network.PolicyGeneral,
-			network.PolicyLocations, network.PolicyRatio, network.PolicyContracts, network.AllowIXPUpdate,
-			network.StatusDashboard, network.RIRStatus, network.RIRStatusUpdated, network.OrganizationID,
+			network.Status, network.Name, network.AKA, network.NameLong, network.Website,
+			marshalJSON(network.SocialMedia), network.ASN, network.LookingGlass, network.RouteServer,
+			network.IRRASSet, network.InfoType, marshalJSON(network.InfoTypes), network.InfoPrefixes4,
+			network.InfoPrefixes6, network.InfoTraffic, network.InfoRatio, network.InfoScope, network.InfoUnicast,
+			network.InfoMulticast, network.InfoIPv6, network.InfoNeverViaRouteServers, network.Notes,
+			network.PolicyURL, network.PolicyGeneral, network.PolicyLocations, network.PolicyRatio,
+			network.PolicyContracts, network.AllowIXPUpdate, network.StatusDashboard, network.RIRStatus,
+			network.RIRStatusUpdated, network.OrganizationID,
 		)
 		if err != nil {
 			log.Fatal(err)
@@ -393,10 +403,10 @@ func (s *Synchronization) SynchronizeInternetExchanges(bar *mpb.Bar) {
 		err = s.executeInsertOrUpdate(
 			tx, (since == 0), table.Name, ix.ID, table.GetColumnsNames(), ix.Created, ix.Updated, ix.Status, ix.Name,
 			ix.AKA, ix.NameLong, ix.City, ix.Country, ix.RegionContinent, ix.Media, ix.Notes, ix.ProtoUnicast,
-			ix.ProtoMulticast, ix.ProtoIPv6, ix.Website, "ix.SocialMedia", ix.URLStats, ix.TechEmail, ix.TechPhone,
-			ix.PolicyEmail, ix.PolicyPhone, ix.SalesEmail, ix.SalesPhone, ix.IxfNetCount, ix.IxfLastImport,
-			ix.IxfImportRequest, ix.IxfImportRequestStatus, ix.ServiceLevel, ix.Terms, ix.StatusDashboard,
-			ix.OrganizationID,
+			ix.ProtoMulticast, ix.ProtoIPv6, ix.Website, marshalJSON(ix.SocialMedia), ix.URLStats, ix.TechEmail,
+			ix.TechPhone, ix.PolicyEmail, ix.PolicyPhone, ix.SalesEmail, ix.SalesPhone, ix.IxfNetCount,
+			ix.IxfLastImport, ix.IxfImportRequest, ix.IxfImportRequestStatus, ix.ServiceLevel, ix.Terms,
+			ix.StatusDashboard, ix.OrganizationID,
 		)
 		if err != nil {
 			log.Fatal(err)
