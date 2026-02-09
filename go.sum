@@ -3,8 +3,8 @@ github.com/VividCortex/ewma v1.2.0/go.mod h1:nz4BbCtbLyFDeC9SUHbtcT5644juEuWfUAU
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d/go.mod h1:asat636LX7Bqt5lYEZ27JNDcqxfjdBQuJ/MM4CN/Lzo=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
-github.com/gmazoyer/peeringdb v0.0.0-20241228001557-7b9ca35a9ab9 h1:BkEaH+FPA9VnJ7OEealL2V9Kfh4WIO9K9fR+pTbuFnc=
-github.com/gmazoyer/peeringdb v0.0.0-20241228001557-7b9ca35a9ab9/go.mod h1:5QinLkDLIeFmKRbpeWZS+3UpJuS7rgOG30F8SFnjKIU=
+github.com/gmazoyer/peeringdb v0.1.0 h1:Gs6ZQ3OVZqeaDApzyPcB6q/6DtkuU4OSKrEvJNIkAW0=
+github.com/gmazoyer/peeringdb v0.1.0/go.mod h1:DubuVD85sYk3dJyfXdQ8lJP1tmzS88qlx1XBAzc6yD0=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6TULQc=

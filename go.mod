@@ -1,9 +1,9 @@
 module github.com/gmazoyer/peeringdb-sync
 
-go 1.22
+go 1.24
 
 require (
-	github.com/gmazoyer/peeringdb v0.0.0-20241228001557-7b9ca35a9ab9
+	github.com/gmazoyer/peeringdb v0.1.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/spf13/cobra v1.8.1
 	github.com/vbauerster/mpb/v8 v8.8.3

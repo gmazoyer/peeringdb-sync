@@ -44,12 +44,11 @@ var syncCmd = &cobra.Command{
 		}
 
 		// Prepare to query the API and the synchronization
-		var api *peeringdb.API
-		if PeeringdbApiKey == "" {
-			api = peeringdb.NewAPI()
-		} else {
-			api = peeringdb.NewAPIWithAPIKey(PeeringdbApiKey)
+		var opts []peeringdb.Option
+		if PeeringdbApiKey != "" {
+			opts = append(opts, peeringdb.WithAPIKey(PeeringdbApiKey))
 		}
+		api := peeringdb.NewAPI(opts...)
 
 		var wg sync.WaitGroup
 		doneChannels := make(map[string]chan struct{})
@@ -61,6 +60,7 @@ var syncCmd = &cobra.Command{
 		campusTask := task{name: "Campuses", function: s.SynchronizeCampuses, dependencies: []task{orgTask}}
 		facTask := task{name: "Facilities", function: s.SynchronizeFacilities, dependencies: []task{orgTask, campusTask}}
 		carrierTask := task{name: "Carriers", function: s.SynchronizeCarriers, dependencies: []task{orgTask}}
+		carrierFacTask := task{name: "Carrier Facilities", function: s.SynchronizeCarrierFacilities, dependencies: []task{carrierTask, facTask}}
 		netTask := task{name: "Networks", function: s.SynchronizeNetworks, dependencies: []task{orgTask}}
 		ixTask := task{name: "Internet Exchanges", function: s.SynchronizeInternetExchanges, dependencies: []task{orgTask}}
 		ixfacTask := task{name: "Internet Exchange Facilities", function: s.SynchronizeInternetExchangeFacilities, dependencies: []task{facTask, ixTask}}
@@ -70,10 +70,17 @@ var syncCmd = &cobra.Command{
 		netfacTask := task{name: "Network Facilities", function: s.SynchronizeNetworkFacilities, dependencies: []task{netTask, facTask}}
 		netixlanTask := task{name: "Network Internet Exchange LANs", function: s.SynchronizeNetworkInternetExchangeLANs, dependencies: []task{netTask, ixTask, ixlanTask}}
 
-		for _, t := range []task{orgTask, campusTask, facTask, carrierTask, netTask, ixTask, ixfacTask, ixlanTask, ixpfxTask, pocTask, netfacTask, netixlanTask} {
-			wg.Add(1)
+		tasks := []task{orgTask, campusTask, facTask, carrierTask, carrierFacTask, netTask, ixTask, ixfacTask, ixlanTask, ixpfxTask, pocTask, netfacTask, netixlanTask}
 
+		// Create all done channels upfront to avoid a data race between
+		// the main goroutine writing to the map and worker goroutines
+		// reading from it.
+		for _, t := range tasks {
 			doneChannels[t.name] = make(chan struct{})
+		}
+
+		for _, t := range tasks {
+			wg.Add(1)
 
 			var dependencyChannels []<-chan struct{}
 			for _, dep := range t.dependencies {
@@ -91,9 +98,10 @@ var syncCmd = &cobra.Command{
 				),
 			)
 
+			done := doneChannels[t.name]
 			go func(t task, d []<-chan struct{}, b *mpb.Bar) {
 				t.execute(&wg, d, b)
-				close(doneChannels[t.name]) // Signal task is done
+				close(done) // Signal task is done
 			}(t, dependencyChannels, bar)
 		}
 
